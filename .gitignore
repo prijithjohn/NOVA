@@ -1,0 +1,37 @@
+@"
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Build artifacts
+dist/
+build/
+coverage/
+.next/
+
+# Logs & temporary files
+*.log
+*.tmp
+*.temp
+
+# Local databases
+*.sqlite3
+*.db
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local Copilot instructions
+.github/copilot-instructions.md
+"@ | Set-Content .gitignore
