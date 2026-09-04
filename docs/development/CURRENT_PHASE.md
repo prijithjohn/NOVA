@@ -1,54 +1,47 @@
-# Current Phase: Phase 1
+# Current Phase: Phase 2
 
 ## Name
 
-**Phase 1: Application Foundation**
+**Phase 2: Core Personal Workspace**
 
 ## Current Slice
 
-**Slice 1: Runnable project foundation**
+**Slice 1: Real task management**
 
-This slice is complete. NOVA now has a React + TypeScript + Vite frontend, a Java + Spring Boot backend built with Maven, a minimal health endpoint, workspace quality tooling, and a frontend shell that verifies backend connectivity.
+This slice is complete. NOVA now supports persisted task creation, listing, completion changes, and deletion through a Spring Boot REST API backed by PostgreSQL, with a responsive React task workspace.
 
 ## Implemented
 
-- npm workspace structure under `apps/frontend` and `apps/backend`.
-- Frontend development server and production build through Vite.
-- Backend development, production build, and start commands through Java, Spring Boot 4.1.1, and Maven.
-- `GET /api/health`, returning the backend service status as JSON.
-- Vite development proxy from `/api` to the backend.
-- Responsive frontend shell with checking, connected, and unavailable connection states.
-- JUnit/Spring backend tests and frontend unit tests.
-- Type-checking, ESLint, and Prettier configuration.
-- Root `.env.example` documenting the backend port and frontend API base path.
+- PostgreSQL local development service through `compose.yaml`.
+- Spring Data JPA task entity and repository.
+- Flyway migration `V1__create_tasks.sql` for the `tasks` table and index.
+- Task service/business layer with normalized input and not-found handling.
+- DTO-based REST API:
+  - `GET /api/tasks`
+  - `POST /api/tasks`
+  - `PATCH /api/tasks/{id}`
+  - `DELETE /api/tasks/{id}`
+- Request validation for title and description length.
+- HTTP 400 validation responses, HTTP 404 not-found responses, HTTP 201 creation responses, and HTTP 204 deletion responses.
+- Frontend task creation, persisted listing, completion/reopen, deletion, loading, empty, error, and success states.
+- Backend Spring/MockMvc coverage and frontend interaction coverage.
 
 ## Out of Scope
 
-- Domain models or domain workflows
-- Database or persistence
-- Authentication or authorization implementation
-- AI integration or orchestration
-- External service integrations
-- Dashboard, fake data, placeholder product screens, or future-phase features
+- Assistant, AI, Memory, Goals, Calendar, Finance, Documents, or Analytics
+- Authentication or authorization
+- External integrations
+- Redis, RabbitMQ, microservices, CQRS, or event sourcing
+- Dashboard, statistics, mock task data, or in-memory task storage
 
-## Acceptance Criteria
+## Configuration
 
-This slice is complete when:
-
-1. The frontend starts and produces a production build.
-2. The backend starts and produces a production build.
-3. `GET /api/health` responds successfully with a backend health payload.
-4. The frontend reaches the backend health endpoint through the development proxy and displays the connection result.
-5. Backend and frontend tests pass.
-6. Type checks, lint checks, and formatting checks pass.
-7. Environment configuration is represented by `.env.example`; no secrets are committed.
-8. Build output and dependencies are ignored by Git, and no generated or temporary files are added to source control.
-9. The shell remains usable on desktop and mobile widths without introducing dashboard or domain UI.
+The backend requires `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD`. Local PostgreSQL container values are documented in `.env.example`; credentials are supplied through the environment and are not committed.
 
 ## Validation Status
 
-Automated checks, runtime endpoint checks, and responsive browser verification pass for this slice.
+Maven tests and package build, frontend tests/typecheck/lint/build/format checks, Flyway migration execution, real PostgreSQL CRUD, frontend-to-API persistence, desktop/mobile verification, and current browser error checks pass for this slice.
 
-## Next Phase 1 Work
+## Next Phase 2 Work
 
-The next slice must be explicitly scoped before adding persistence, authentication, domain models, or other application behavior.
+The next slice must be explicitly scoped before adding another domain or workflow.

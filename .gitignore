@@ -16,6 +16,7 @@ build/
 target/
 coverage/
 .next/
+*.class
 
 # Logs & temporary files
 *.log
