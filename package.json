@@ -1,0 +1,27 @@
+{
+  "name": "nova",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @nova/frontend",
+    "dev:frontend": "npm run dev --workspace @nova/frontend",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "npm run test --workspace @nova/frontend",
+    "typecheck": "npm run typecheck --workspace @nova/frontend"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.35.0",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
+  }
+}

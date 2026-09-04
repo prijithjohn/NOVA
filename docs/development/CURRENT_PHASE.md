@@ -1,51 +1,54 @@
-# Current Phase: Phase 0
+# Current Phase: Phase 1
 
 ## Name
 
-**Phase 0: Product and Delivery Foundation**
+**Phase 1: Application Foundation**
 
-## Objective
+## Current Slice
 
-Establish a concise, internally consistent product definition for NOVA as a Personal AI Operating System that helps a user think, plan, remember, and act.
+**Slice 1: Runnable project foundation**
 
-## In Scope
+This slice is complete. NOVA now has a React + TypeScript + Vite frontend, a Java + Spring Boot backend built with Maven, a minimal health endpoint, workspace quality tooling, and a frontend shell that verifies backend connectivity.
 
-- Define the product problem, principles, boundaries, and initial requirements.
-- Define the product vision and operating model.
-- Capture representative user stories for Assistant, Memory, Goals, Tasks, Calendar, Finance, Documents, Analytics, and cross-domain workflows.
-- Establish a staged roadmap and explicit boundaries between phases.
-- Record Phase 0 acceptance criteria.
+## Implemented
+
+- npm workspace structure under `apps/frontend` and `apps/backend`.
+- Frontend development server and production build through Vite.
+- Backend development, production build, and start commands through Java, Spring Boot 4.1.1, and Maven.
+- `GET /api/health`, returning the backend service status as JSON.
+- Vite development proxy from `/api` to the backend.
+- Responsive frontend shell with checking, connected, and unavailable connection states.
+- JUnit/Spring backend tests and frontend unit tests.
+- Type-checking, ESLint, and Prettier configuration.
+- Root `.env.example` documenting the backend port and frontend API base path.
 
 ## Out of Scope
 
-- Application code
-- UI or UX implementation
-- Dependencies or tooling changes
-- External integrations
-- Backend services, databases, authentication implementation, or deployment
-- Persisted user data or production behavior
-
-## Deliverables
-
-- `docs/product/PRD.md`
-- `docs/product/PRODUCT_VISION.md`
-- `docs/product/USER_STORIES.md`
-- `docs/development/ROADMAP.md`
-- `docs/development/CURRENT_PHASE.md`
+- Domain models or domain workflows
+- Database or persistence
+- Authentication or authorization implementation
+- AI integration or orchestration
+- External service integrations
+- Dashboard, fake data, placeholder product screens, or future-phase features
 
 ## Acceptance Criteria
 
-Phase 0 is complete when:
+This slice is complete when:
 
-1. All five deliverable files exist at the paths listed above.
-2. The PRD defines NOVA as a Personal AI Operating System and explicitly covers think, plan, remember, and act.
-3. The PRD and vision define the same eight core domains: Assistant, Memory, Goals, Tasks, Calendar, Finance, Documents, and Analytics.
-4. User stories cover all eight domains and include cross-domain assistance, user control, traceability, and privacy expectations.
-5. The roadmap identifies Phase 0 and later phases without claiming that future functionality already exists.
-6. The documents state that unsupported integrations are not assumed and that Phase 0 contains no application code, UI, dependencies, integrations, or persisted user data.
-7. Terminology, scope, and phase boundaries are consistent across all five documents.
-8. The documentation has been reviewed for contradictions, unsupported feature claims, and duplicated or unnecessary material.
+1. The frontend starts and produces a production build.
+2. The backend starts and produces a production build.
+3. `GET /api/health` responds successfully with a backend health payload.
+4. The frontend reaches the backend health endpoint through the development proxy and displays the connection result.
+5. Backend and frontend tests pass.
+6. Type checks, lint checks, and formatting checks pass.
+7. Environment configuration is represented by `.env.example`; no secrets are committed.
+8. Build output and dependencies are ignored by Git, and no generated or temporary files are added to source control.
+9. The shell remains usable on desktop and mobile widths without introducing dashboard or domain UI.
 
-## Exit Condition
+## Validation Status
 
-Phase 0 may be reviewed and closed after the acceptance criteria pass. No implementation work is authorized by this document alone; a subsequent phase requires explicit instruction and its own validated scope.
+Automated checks, runtime endpoint checks, and responsive browser verification pass for this slice.
+
+## Next Phase 1 Work
+
+The next slice must be explicitly scoped before adding persistence, authentication, domain models, or other application behavior.
