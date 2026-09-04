@@ -21,6 +21,15 @@ export interface UpdateTaskInput {
   priority?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
+export interface AssistantActionResponse {
+  action: string;
+  tool: string;
+  idempotencyKey: string;
+  status: string;
+  replayed: boolean;
+  result: Task;
+}
+
 export type TaskStatus = 'all' | 'active' | 'completed';
 export type TaskSort = 'newest' | 'oldest';
 export type TaskPriority = 'all' | 'LOW' | 'MEDIUM' | 'HIGH';
@@ -96,4 +105,21 @@ export function updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
 
 export function deleteTask(id: string): Promise<void> {
   return request<void>(`/tasks/${id}`, { method: 'DELETE' });
+}
+
+export function createTaskWithAssistant(
+  title: string,
+  description: string,
+  priority: Exclude<TaskPriority, 'all'>,
+  idempotencyKey: string,
+): Promise<AssistantActionResponse> {
+  return request<AssistantActionResponse>('/assistant/actions', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'create_task',
+      tool: 'create_task',
+      idempotencyKey,
+      input: { title, description, priority },
+    }),
+  });
 }

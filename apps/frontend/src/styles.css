@@ -116,6 +116,25 @@ h1 {
   padding-top: 3rem;
 }
 
+.assistant-panel {
+  max-width: 760px;
+  margin-top: 2rem;
+  padding: 1.4rem 1.6rem;
+  border: 1px solid rgba(44, 129, 85, 0.28);
+  border-radius: 0.5rem;
+  background: rgba(215, 229, 218, 0.4);
+}
+
+.assistant-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.35fr);
+  gap: 0.9rem;
+}
+
+.assistant-submit {
+  max-width: 18rem;
+}
+
 .task-form,
 .task-list {
   min-width: 0;
@@ -417,6 +436,14 @@ select:focus {
   .workspace {
     display: block;
     padding-top: 2rem;
+  }
+
+  .assistant-panel {
+    margin-top: 1.5rem;
+  }
+
+  .assistant-fields {
+    grid-template-columns: 1fr;
   }
 
   .task-controls {

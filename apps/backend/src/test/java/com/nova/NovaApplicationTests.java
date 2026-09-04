@@ -13,6 +13,7 @@ import java.util.UUID;
 import com.nova.tasks.Task;
 import com.nova.tasks.TaskPriority;
 import com.nova.tasks.TaskRepository;
+import com.nova.assistant.AssistantActionExecutionRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,9 +33,85 @@ class NovaApplicationTests {
     @Autowired
     private TaskRepository taskRepository;
 
+        @Autowired
+        private AssistantActionExecutionRepository assistantActionExecutionRepository;
+
     @BeforeEach
     void clearTasks() {
+        assistantActionExecutionRepository.deleteAll();
         taskRepository.deleteAll();
+    }
+
+    @Test
+    void assistantCreateTaskActionReturnsStructuredResult() throws Exception {
+        mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "action":"create_task",
+                                  "tool":"create_task",
+                                  "idempotencyKey":"assistant-test-1",
+                                  "input":{"title":"Assistant task","description":"Created by a tool","priority":"HIGH"}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.action").value("create_task"))
+                .andExpect(jsonPath("$.tool").value("create_task"))
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.replayed").value(false))
+                .andExpect(jsonPath("$.result.title").value("Assistant task"))
+                .andExpect(jsonPath("$.result.priority").value("HIGH"));
+    }
+
+    @Test
+    void assistantActionIsIdempotent() throws Exception {
+        String request = """
+                {
+                  "action":"create_task",
+                  "tool":"create_task",
+                  "idempotencyKey":"assistant-repeat-1",
+                  "input":{"title":"Only once","description":"Retry me","priority":"MEDIUM"}
+                }
+                """;
+
+        String firstId = mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.replayed").value(false))
+                .andReturn().getResponse().getContentAsString()
+                .replaceAll(".*\\\"id\\\":\\\"([^\\\"]+)\\\".*", "$1");
+
+        mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.replayed").value(true))
+                .andExpect(jsonPath("$.result.id").value(firstId));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, taskRepository.count());
+
+        mockMvc.perform(delete("/api/tasks/" + firstId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void assistantRejectsInvalidActionToolAndInput() throws Exception {
+        mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"delete_task\",\"tool\":\"create_task\",\"idempotencyKey\":\"bad-action\",\"input\":{\"title\":\"Task\"}}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"create_task\",\"tool\":\"missing_tool\",\"idempotencyKey\":\"bad-tool\",\"input\":{\"title\":\"Task\"}}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/assistant/actions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"create_task\",\"tool\":\"create_task\",\"idempotencyKey\":\"bad-input\",\"input\":{\"title\":\"   \"}}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Title is required"));
     }
 
     @Test

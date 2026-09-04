@@ -6,14 +6,38 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.nova.assistant.AssistantActionExecution;
+import com.nova.assistant.AssistantActionExecutionRepository;
+
 @Service
 @Transactional
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final AssistantActionExecutionRepository assistantActionExecutionRepository;
 
-    public TaskService(TaskRepository taskRepository) {
+    public TaskService(
+            TaskRepository taskRepository,
+            AssistantActionExecutionRepository assistantActionExecutionRepository) {
         this.taskRepository = taskRepository;
+        this.assistantActionExecutionRepository = assistantActionExecutionRepository;
+    }
+
+    public IdempotentTaskResult createIdempotent(
+            String idempotencyKey,
+            String title,
+            String description,
+            String priorityValue) {
+        var existing = assistantActionExecutionRepository.findByIdempotencyKey(idempotencyKey);
+        if (existing.isPresent()) {
+            return new IdempotentTaskResult(
+                    TaskResponse.from(findById(existing.get().getTaskId())),
+                    true);
+        }
+
+        Task task = create(title, description, priorityValue);
+        assistantActionExecutionRepository.save(new AssistantActionExecution(idempotencyKey, task.getId()));
+        return new IdempotentTaskResult(TaskResponse.from(task), false);
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +82,9 @@ public class TaskService {
     }
 
     public void delete(UUID id) {
-        taskRepository.delete(findById(id));
+        Task task = findById(id);
+        assistantActionExecutionRepository.deleteByTaskId(task.getId());
+        taskRepository.delete(task);
     }
 
     private Task findById(UUID id) {
@@ -71,5 +97,8 @@ public class TaskService {
         }
         String normalized = description.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    public record IdempotentTaskResult(TaskResponse task, boolean replayed) {
     }
 }

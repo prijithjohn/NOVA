@@ -6,38 +6,39 @@
 
 ## Current Slice
 
-**Task priority**
+**Assistant tool foundation: create task**
 
-This slice is complete. NOVA tasks now persist LOW, MEDIUM, or HIGH priority, support priority filtering, and expose priority through the existing task workflow without changing status filtering, search, sorting, or CRUD behavior.
+This slice is complete. NOVA now exposes one deterministic, controlled Assistant action that creates a persisted task through the existing TaskService.
 
 ## Implemented
 
-- Task priority persistence in PostgreSQL.
-- Flyway migration `V2__add_task_priority.sql` with a MEDIUM default and valid-value constraint.
-- Priority in task creation requests and responses.
-- Optional priority updates through the existing PATCH endpoint.
-- Backend `priority=all|LOW|MEDIUM|HIGH` filtering through the repository query.
-- HTTP 400 responses for invalid priority values.
-- Frontend create-time priority selection and task priority display.
-- Frontend priority filter alongside existing status, search, and sort controls.
-- Backend and frontend priority test coverage.
+- Structured `POST /api/assistant/actions` endpoint.
+- Small Assistant tool abstraction and registry.
+- `CreateTaskTool` for the `create_task` action.
+- Validated structured input including title, description, priority, tool, action, and idempotency key.
+- Service-owned idempotency persistence through `assistant_action_executions`.
+- Repeated execution with the same idempotency key returns the original task instead of creating a duplicate.
+- DTO-based structured Assistant response with action, tool, status, replay flag, and task result.
+- Minimal frontend Assistant create-task form with loading, success, and error states.
+- Existing task CRUD, status filtering, priority filtering, search, and sorting preserved.
 
-## Preserved
+## Architecture Boundary
 
-- Create, edit/update, complete, reopen, and delete behavior.
-- Existing status filtering, title/description search, and newest/oldest sorting.
-- Backwards-compatible task requests without a priority, which default to MEDIUM.
+`AssistantActionController -> AssistantToolRegistry -> CreateTaskTool -> TaskService -> TaskRepository -> PostgreSQL`
+
+`CreateTaskTool` does not access repositories, JPA entities, or the database directly. No LLM, RAG, memory, or AI infrastructure is included.
 
 ## Out of Scope
 
-- Assistant, AI, Memory, Goals, Calendar, Finance, Documents, or Analytics
+- Ollama, Gemini, RAG, memory, or autonomous AI behavior
+- Assistant actions other than create task
 - Authentication or authorization
-- Notifications, recurring tasks, pagination, external integrations, Redis, RabbitMQ, microservices, CQRS, or event sourcing
+- Goals, Calendar, Finance, Documents, Analytics, notifications, or other future features
 
 ## Validation Status
 
-Maven tests and package build, frontend tests/typecheck/lint/build/format checks, Flyway migration execution, real PostgreSQL priority CRUD/filter behavior, frontend-to-API persistence, desktop/mobile verification, and runtime error checks pass for this slice.
+Maven tests and package build, frontend tests/typecheck/lint/build/format checks, Flyway migration execution, real PostgreSQL Assistant action/idempotency behavior, frontend action flow, desktop/mobile verification, and runtime error checks pass for this slice.
 
 ## Next Phase 2 Work
 
-The next slice must be explicitly scoped before adding another task capability or domain workflow.
+The next slice must be explicitly scoped before adding another Assistant action or domain workflow.

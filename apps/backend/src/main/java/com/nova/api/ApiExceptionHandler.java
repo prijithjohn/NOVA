@@ -2,14 +2,16 @@ package com.nova.api;
 
 import java.util.Map;
 
-import com.nova.tasks.TaskNotFoundException;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import com.nova.assistant.AssistantActionNotSupportedException;
+import com.nova.assistant.AssistantToolNotFoundException;
+import com.nova.tasks.TaskNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -37,6 +39,11 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleInvalidTaskQuery(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler({AssistantActionNotSupportedException.class, AssistantToolNotFoundException.class})
+    public ResponseEntity<Map<String, String>> handleInvalidAssistantRequest(RuntimeException exception) {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 }

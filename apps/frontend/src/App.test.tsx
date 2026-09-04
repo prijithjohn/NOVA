@@ -102,7 +102,10 @@ describe('task workspace', () => {
       await screen.findByText('Review the persisted task'),
     ).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Task title'), 'New task');
+    const taskTitleInput = screen
+      .getAllByRole('textbox')
+      .find((element) => element.getAttribute('aria-label') === 'Task title');
+    await user.type(taskTitleInput!, 'New task');
     await user.selectOptions(
       screen.getByLabelText('New task priority'),
       'HIGH',
@@ -202,5 +205,80 @@ describe('task workspace', () => {
         'No tasks yet. Add the first one when you are ready.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('submits a create-task action and shows the assistant result', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('[]', { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            action: 'create_task',
+            tool: 'create_task',
+            idempotencyKey: 'assistant-key',
+            status: 'completed',
+            replayed: false,
+            result: {
+              ...activeTask,
+              id: 'assistant-task',
+              title: 'Assistant task',
+              priority: 'HIGH',
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+    await user.type(
+      screen.getByLabelText('Assistant task title'),
+      'Assistant task',
+    );
+    await user.selectOptions(
+      screen.getByLabelText('Assistant task priority'),
+      'HIGH',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Create with Assistant' }),
+    );
+
+    expect(
+      await screen.findByText('Created task: Assistant task'),
+    ).toBeInTheDocument();
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/assistant/actions');
+    expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string).tool).toBe(
+      'create_task',
+    );
+  });
+
+  it('shows assistant loading and error states', async () => {
+    const user = userEvent.setup();
+    let rejectAction: (error: Error) => void = () => undefined;
+    const actionPromise = new Promise<Response>((_, reject) => {
+      rejectAction = reject;
+    });
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('[]', { status: 200 }))
+      .mockReturnValueOnce(actionPromise);
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+    await user.type(screen.getByLabelText('Assistant task title'), 'Will fail');
+    await user.click(
+      screen.getByRole('button', { name: 'Create with Assistant' }),
+    );
+    expect(screen.getByRole('button', { name: 'Working...' })).toBeDisabled();
+    rejectAction(new Error('Assistant action failed'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Assistant action failed',
+    );
   });
 });

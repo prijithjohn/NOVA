@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
-import { createTask, deleteTask, listTasks, updateTask } from './api';
+import {
+  createTask,
+  createTaskWithAssistant,
+  deleteTask,
+  listTasks,
+  updateTask,
+} from './api';
 import type {
   Task,
   TaskPriority,
@@ -39,6 +45,15 @@ export function App() {
   const [submitting, setSubmitting] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [assistantTitle, setAssistantTitle] = useState('');
+  const [assistantDescription, setAssistantDescription] = useState('');
+  const [assistantPriority, setAssistantPriority] =
+    useState<Exclude<TaskPriority, 'all'>>('MEDIUM');
+  const [assistantState, setAssistantState] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
+  const [assistantError, setAssistantError] = useState<string | null>(null);
+  const [assistantResult, setAssistantResult] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -95,6 +110,36 @@ export function App() {
       setError((createError as Error).message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleAssistantCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!assistantTitle.trim() || assistantState === 'loading') {
+      return;
+    }
+
+    setAssistantState('loading');
+    setAssistantError(null);
+    setAssistantResult(null);
+    try {
+      const response = await createTaskWithAssistant(
+        assistantTitle,
+        assistantDescription,
+        assistantPriority,
+        crypto.randomUUID(),
+      );
+      await reloadCurrentView();
+      setAssistantTitle('');
+      setAssistantDescription('');
+      setAssistantPriority('MEDIUM');
+      setAssistantResult(
+        `${response.replayed ? 'Existing' : 'Created'} task: ${response.result.title}`,
+      );
+      setAssistantState('success');
+    } catch (assistantActionError) {
+      setAssistantError((assistantActionError as Error).message);
+      setAssistantState('error');
     }
   }
 
@@ -155,6 +200,75 @@ export function App() {
         </div>
         <span className="connection-label">Live persistence</span>
       </header>
+
+      <form className="assistant-panel" onSubmit={handleAssistantCreate}>
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">Assistant action</p>
+            <h2>Create a task</h2>
+          </div>
+          <span className="required-note">Controlled tool</span>
+        </div>
+        <div className="assistant-fields">
+          <label>
+            Task title
+            <input
+              aria-label="Assistant task title"
+              value={assistantTitle}
+              onChange={(event) => setAssistantTitle(event.target.value)}
+              maxLength={200}
+              placeholder="Ask NOVA to create a task"
+              required
+            />
+          </label>
+          <label>
+            Priority
+            <select
+              aria-label="Assistant task priority"
+              value={assistantPriority}
+              onChange={(event) =>
+                setAssistantPriority(
+                  event.target.value as Exclude<TaskPriority, 'all'>,
+                )
+              }
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Context <span className="optional">Optional</span>
+          <textarea
+            aria-label="Assistant task description"
+            value={assistantDescription}
+            onChange={(event) => setAssistantDescription(event.target.value)}
+            maxLength={2000}
+            rows={2}
+            placeholder="Add task context"
+          />
+        </label>
+        <button
+          className="primary-button assistant-submit"
+          type="submit"
+          disabled={assistantState === 'loading' || !assistantTitle.trim()}
+        >
+          {assistantState === 'loading'
+            ? 'Working...'
+            : 'Create with Assistant'}
+        </button>
+        {assistantResult && (
+          <p className="notice" role="status">
+            {assistantResult}
+          </p>
+        )}
+        {assistantError && (
+          <p className="error-message" role="alert">
+            {assistantError}
+          </p>
+        )}
+      </form>
 
       <section className="workspace" aria-label="Task workspace">
         <form className="task-form" onSubmit={handleCreate}>
