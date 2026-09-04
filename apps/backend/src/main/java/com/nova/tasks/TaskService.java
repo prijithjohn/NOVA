@@ -17,8 +17,11 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<Task> findAll(String statusValue, String search, String sortValue) {
+    public List<Task> findAll(String statusValue, String priorityValue, String search, String sortValue) {
         TaskStatus status = TaskStatus.parse(statusValue);
+        TaskPriority priority = "all".equalsIgnoreCase(priorityValue)
+            ? null
+            : TaskPriority.parse(priorityValue);
         TaskSort sort = TaskSort.parse(sortValue);
         Boolean completed = switch (status) {
             case ALL -> null;
@@ -27,14 +30,17 @@ public class TaskService {
         };
         String normalizedSearch = search == null ? "" : search.trim();
         String normalizedSort = sort == TaskSort.OLDEST ? "oldest" : "newest";
-        return taskRepository.findFiltered(completed, normalizedSearch, normalizedSort);
+        return taskRepository.findFiltered(completed, priority, normalizedSearch, normalizedSort);
     }
 
-    public Task create(String title, String description) {
-        return taskRepository.save(new Task(title.trim(), normalizeDescription(description)));
+    public Task create(String title, String description, String priorityValue) {
+        TaskPriority priority = priorityValue == null || priorityValue.isBlank()
+                ? TaskPriority.MEDIUM
+                : TaskPriority.parse(priorityValue);
+        return taskRepository.save(new Task(title.trim(), normalizeDescription(description), priority));
     }
 
-    public Task update(UUID id, String title, String description, Boolean completed) {
+    public Task update(UUID id, String title, String description, Boolean completed, String priorityValue) {
         Task task = findById(id);
         if (title != null) {
             task.setTitle(title.trim());
@@ -44,6 +50,9 @@ public class TaskService {
         }
         if (completed != null) {
             task.setCompleted(completed);
+        }
+        if (priorityValue != null) {
+            task.setPriority(TaskPriority.parse(priorityValue));
         }
         return taskRepository.save(task);
     }

@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 
 @Entity
 @Table(name = "tasks")
@@ -26,6 +28,10 @@ public class Task {
     @Column(nullable = false)
     private boolean completed;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private TaskPriority priority;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -36,9 +42,14 @@ public class Task {
     }
 
     public Task(String title, String description) {
+        this(title, description, TaskPriority.MEDIUM);
+    }
+
+    public Task(String title, String description, TaskPriority priority) {
         this.title = title;
         this.description = description;
         this.completed = false;
+        this.priority = priority;
     }
 
     @PrePersist
@@ -80,6 +91,14 @@ public class Task {
 
     public void setCompleted(boolean completed) {
         this.completed = completed;
+    }
+
+    public TaskPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(TaskPriority priority) {
+        this.priority = priority;
     }
 
     public Instant getCreatedAt() {

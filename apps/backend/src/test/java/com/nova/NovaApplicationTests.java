@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.UUID;
 
 import com.nova.tasks.Task;
+import com.nova.tasks.TaskPriority;
 import com.nova.tasks.TaskRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -47,10 +48,11 @@ class NovaApplicationTests {
     void taskCrudPersistsAndReturnsDtoData() throws Exception {
         String createResponse = mockMvc.perform(post("/api/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"Plan the week\",\"description\":\"Review priorities\"}"))
+                        .content("{\"title\":\"Plan the week\",\"description\":\"Review priorities\",\"priority\":\"HIGH\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("Plan the week"))
                 .andExpect(jsonPath("$.completed").value(false))
+                .andExpect(jsonPath("$.priority").value("HIGH"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -62,9 +64,10 @@ class NovaApplicationTests {
 
         mockMvc.perform(patch("/api/tasks/" + id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"completed\":true}"))
+                        .content("{\"completed\":true,\"priority\":\"LOW\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.completed").value(true));
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.priority").value("LOW"));
 
         mockMvc.perform(delete("/api/tasks/" + id))
                 .andExpect(status().isNoContent());
@@ -94,10 +97,10 @@ class NovaApplicationTests {
 
     @Test
     void taskQueriesFilterSearchAndSortInTheDatabase() throws Exception {
-        Task first = taskRepository.save(new Task("Plan the week", "Review priorities"));
+        Task first = taskRepository.save(new Task("Plan the week", "Review priorities", TaskPriority.HIGH));
         first.setCompleted(true);
         taskRepository.save(first);
-        taskRepository.save(new Task("Buy milk", "Plan dinner"));
+        taskRepository.save(new Task("Buy milk", "Plan dinner", TaskPriority.LOW));
 
         mockMvc.perform(get("/api/tasks"))
                 .andExpect(status().isOk())
@@ -113,6 +116,16 @@ class NovaApplicationTests {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].title").value("Plan the week"));
 
+        mockMvc.perform(get("/api/tasks?priority=high"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Plan the week"));
+
+        mockMvc.perform(get("/api/tasks?priority=low"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Buy milk"));
+
         mockMvc.perform(get("/api/tasks?search=PLAN"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
@@ -123,6 +136,11 @@ class NovaApplicationTests {
                 .andExpect(jsonPath("$[0].title").value("Plan the week"));
 
         mockMvc.perform(get("/api/tasks?status=active&search=plan"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Buy milk"));
+
+        mockMvc.perform(get("/api/tasks?status=active&priority=low&search=plan"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].title").value("Buy milk"));
@@ -145,5 +163,9 @@ class NovaApplicationTests {
         mockMvc.perform(get("/api/tasks?sort=random"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invalid task sort: random"));
+
+        mockMvc.perform(get("/api/tasks?priority=urgent"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid task priority: urgent"));
     }
 }

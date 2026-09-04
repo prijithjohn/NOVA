@@ -9,5 +9,7 @@ public record UpdateTaskRequest(
         String title,
         @Size(max = 2000, message = "Description must be 2000 characters or fewer")
         String description,
-        Boolean completed) {
+        Boolean completed,
+        @Size(max = 10, message = "Priority must be LOW, MEDIUM, or HIGH")
+        String priority) {
 }

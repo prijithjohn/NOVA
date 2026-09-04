@@ -8,6 +8,7 @@ public record TaskResponse(
         String title,
         String description,
         boolean completed,
+        TaskPriority priority,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -17,6 +18,7 @@ public record TaskResponse(
                 task.getTitle(),
                 task.getDescription(),
                 task.isCompleted(),
+                task.getPriority(),
                 task.getCreatedAt(),
                 task.getUpdatedAt());
     }

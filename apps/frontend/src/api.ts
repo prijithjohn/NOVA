@@ -3,6 +3,7 @@ export interface Task {
   title: string;
   description: string | null;
   completed: boolean;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
   createdAt: string;
   updatedAt: string;
 }
@@ -10,19 +11,23 @@ export interface Task {
 export interface CreateTaskInput {
   title: string;
   description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 export interface UpdateTaskInput {
   title?: string;
   description?: string;
   completed?: boolean;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 export type TaskStatus = 'all' | 'active' | 'completed';
 export type TaskSort = 'newest' | 'oldest';
+export type TaskPriority = 'all' | 'LOW' | 'MEDIUM' | 'HIGH';
 
 export interface TaskQuery {
   status: TaskStatus;
+  priority: TaskPriority;
   search: string;
   sort: TaskSort;
 }
@@ -61,6 +66,9 @@ export function listTasks(query?: Partial<TaskQuery>): Promise<Task[]> {
   const params = new URLSearchParams();
   if (query?.status && query.status !== 'all') {
     params.set('status', query.status);
+  }
+  if (query?.priority && query.priority !== 'all') {
+    params.set('priority', query.priority);
   }
   if (query?.search?.trim()) {
     params.set('search', query.search.trim());

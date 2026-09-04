@@ -12,6 +12,7 @@ const activeTask = {
   title: 'Review the persisted task',
   description: 'Confirm the API flow.',
   completed: false,
+  priority: 'MEDIUM' as const,
   createdAt: '2026-09-04T10:00:00Z',
   updatedAt: '2026-09-04T10:00:00Z',
 };
@@ -21,6 +22,7 @@ const completedTask = {
   title: 'Close the old task',
   description: 'This one is already done.',
   completed: true,
+  priority: 'HIGH' as const,
   createdAt: '2026-09-04T11:00:00Z',
   updatedAt: '2026-09-04T11:00:00Z',
 };
@@ -40,7 +42,12 @@ describe('task workspace', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({ ...activeTask, id: 'task-3', title: 'New task' }),
+          JSON.stringify({
+            ...activeTask,
+            id: 'task-3',
+            title: 'New task',
+            priority: 'HIGH',
+          }),
           { status: 201 },
         ),
       )
@@ -48,7 +55,12 @@ describe('task workspace', () => {
         new Response(
           JSON.stringify([
             activeTask,
-            { ...activeTask, id: 'task-3', title: 'New task' },
+            {
+              ...activeTask,
+              id: 'task-3',
+              title: 'New task',
+              priority: 'HIGH',
+            },
           ]),
           { status: 200 },
         ),
@@ -60,6 +72,7 @@ describe('task workspace', () => {
             id: 'task-3',
             title: 'New task',
             completed: true,
+            priority: 'HIGH',
           }),
           { status: 200 },
         ),
@@ -68,7 +81,13 @@ describe('task workspace', () => {
         new Response(
           JSON.stringify([
             activeTask,
-            { ...activeTask, id: 'task-3', title: 'New task', completed: true },
+            {
+              ...activeTask,
+              id: 'task-3',
+              title: 'New task',
+              completed: true,
+              priority: 'HIGH',
+            },
           ]),
           { status: 200 },
         ),
@@ -84,6 +103,10 @@ describe('task workspace', () => {
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Task title'), 'New task');
+    await user.selectOptions(
+      screen.getByLabelText('New task priority'),
+      'HIGH',
+    );
     await user.click(screen.getByRole('button', { name: 'Create task' }));
     expect(await screen.findByText('Task created.')).toBeInTheDocument();
 
@@ -93,6 +116,9 @@ describe('task workspace', () => {
     await user.click(screen.getByRole('button', { name: 'Delete New task' }));
     expect(await screen.findByText('Task deleted.')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(7);
+    expect(fetchMock.mock.calls[1][1]?.body).toBe(
+      JSON.stringify({ title: 'New task', description: '', priority: 'HIGH' }),
+    );
   });
 
   it('sends filter, search, and sort changes to the backend', async () => {
@@ -103,6 +129,9 @@ describe('task workspace', () => {
         new Response(JSON.stringify([activeTask, completedTask]), {
           status: 200,
         }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([completedTask]), { status: 200 }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify([completedTask]), { status: 200 }),
@@ -128,12 +157,22 @@ describe('task workspace', () => {
     );
 
     await user.selectOptions(
+      screen.getByLabelText('Task priority filter'),
+      'HIGH',
+    );
+    await screen.findByText('Close the old task');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/tasks?status=completed&priority=HIGH',
+      expect.anything(),
+    );
+
+    await user.selectOptions(
       screen.getByLabelText('Task sort order'),
       'oldest',
     );
     await screen.findByText('Close the old task');
     expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/tasks?status=completed&sort=oldest',
+      '/api/tasks?status=completed&priority=HIGH&sort=oldest',
       expect.anything(),
     );
 
@@ -146,7 +185,7 @@ describe('task workspace', () => {
       ),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/tasks?status=completed&search=missing&sort=oldest',
+      '/api/tasks?status=completed&priority=HIGH&search=missing&sort=oldest',
       expect.anything(),
     );
   });

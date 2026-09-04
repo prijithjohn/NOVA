@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { createTask, deleteTask, listTasks, updateTask } from './api';
-import type { Task, TaskQuery, TaskSort, TaskStatus } from './api';
+import type {
+  Task,
+  TaskPriority,
+  TaskQuery,
+  TaskSort,
+  TaskStatus,
+} from './api';
 import './styles.css';
 
 type ViewState = 'loading' | 'ready' | 'error';
@@ -16,6 +22,7 @@ export function formatTaskDate(value: string): string {
 
 const initialQuery: TaskQuery = {
   status: 'all',
+  priority: 'all',
   search: '',
   sort: 'newest',
 };
@@ -27,6 +34,8 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [newTaskPriority, setNewTaskPriority] =
+    useState<Exclude<TaskPriority, 'all'>>('MEDIUM');
   const [submitting, setSubmitting] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -76,10 +85,11 @@ export function App() {
     setError(null);
     setNotice(null);
     try {
-      await createTask({ title, description });
+      await createTask({ title, description, priority: newTaskPriority });
       await reloadCurrentView();
       setTitle('');
       setDescription('');
+      setNewTaskPriority('MEDIUM');
       setNotice('Task created.');
     } catch (createError) {
       setError((createError as Error).message);
@@ -128,7 +138,10 @@ export function App() {
     }
   }
 
-  const hasQuery = query.status !== 'all' || query.search.trim() !== '';
+  const hasQuery =
+    query.status !== 'all' ||
+    query.priority !== 'all' ||
+    query.search.trim() !== '';
 
   return (
     <main className="app-shell">
@@ -174,6 +187,22 @@ export function App() {
               placeholder="Add useful context"
             />
           </label>
+          <label>
+            Priority
+            <select
+              aria-label="New task priority"
+              value={newTaskPriority}
+              onChange={(event) =>
+                setNewTaskPriority(
+                  event.target.value as Exclude<TaskPriority, 'all'>,
+                )
+              }
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+          </label>
           <button
             className="primary-button"
             type="submit"
@@ -207,6 +236,21 @@ export function App() {
                 <option value="all">All</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
+              </select>
+            </label>
+            <label>
+              Priority
+              <select
+                aria-label="Task priority filter"
+                value={query.priority}
+                onChange={(event) =>
+                  updateQuery('priority', event.target.value as TaskPriority)
+                }
+              >
+                <option value="all">All priorities</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
               </select>
             </label>
             <label>
@@ -280,7 +324,14 @@ export function App() {
                     {task.completed ? '✓' : ''}
                   </button>
                   <div className="task-content">
-                    <h3>{task.title}</h3>
+                    <div className="task-title-row">
+                      <h3>{task.title}</h3>
+                      <span
+                        className={`priority-badge priority-${task.priority.toLowerCase()}`}
+                      >
+                        {task.priority}
+                      </span>
+                    </div>
                     {task.description && <p>{task.description}</p>}
                     <time dateTime={task.updatedAt}>
                       Updated {formatTaskDate(task.updatedAt)}

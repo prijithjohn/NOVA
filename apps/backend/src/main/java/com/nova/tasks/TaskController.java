@@ -30,14 +30,15 @@ public class TaskController {
     @GetMapping
     public List<TaskResponse> list(
             @RequestParam(defaultValue = "all") String status,
+            @RequestParam(defaultValue = "all") String priority,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "newest") String sort) {
-        return taskService.findAll(status, search, sort).stream().map(TaskResponse::from).toList();
+        return taskService.findAll(status, priority, search, sort).stream().map(TaskResponse::from).toList();
     }
 
     @PostMapping
     public ResponseEntity<TaskResponse> create(@Valid @RequestBody CreateTaskRequest request) {
-        Task task = taskService.create(request.title(), request.description());
+        Task task = taskService.create(request.title(), request.description(), request.priority());
         return ResponseEntity.created(URI.create("/api/tasks/" + task.getId()))
                 .body(TaskResponse.from(task));
     }
@@ -48,7 +49,8 @@ public class TaskController {
                 id,
                 request.title(),
                 request.description(),
-                request.completed()));
+                request.completed(),
+                request.priority()));
     }
 
     @DeleteMapping("/{id}")
