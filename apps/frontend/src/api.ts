@@ -18,6 +18,15 @@ export interface UpdateTaskInput {
   completed?: boolean;
 }
 
+export type TaskStatus = 'all' | 'active' | 'completed';
+export type TaskSort = 'newest' | 'oldest';
+
+export interface TaskQuery {
+  status: TaskStatus;
+  search: string;
+  sort: TaskSort;
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 async function request<T>(
@@ -48,8 +57,19 @@ async function request<T>(
   return response.json() as Promise<T>;
 }
 
-export function listTasks(): Promise<Task[]> {
-  return request<Task[]>('/tasks');
+export function listTasks(query?: Partial<TaskQuery>): Promise<Task[]> {
+  const params = new URLSearchParams();
+  if (query?.status && query.status !== 'all') {
+    params.set('status', query.status);
+  }
+  if (query?.search?.trim()) {
+    params.set('search', query.search.trim());
+  }
+  if (query?.sort && query.sort !== 'newest') {
+    params.set('sort', query.sort);
+  }
+  const queryString = params.toString();
+  return request<Task[]>(`/tasks${queryString ? `?${queryString}` : ''}`);
 }
 
 export function createTask(input: CreateTaskInput): Promise<Task> {

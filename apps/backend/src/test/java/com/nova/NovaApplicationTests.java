@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import com.nova.tasks.Task;
 import com.nova.tasks.TaskRepository;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -89,5 +90,60 @@ class NovaApplicationTests {
 
         mockMvc.perform(delete("/api/tasks/" + missingId))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void taskQueriesFilterSearchAndSortInTheDatabase() throws Exception {
+        Task first = taskRepository.save(new Task("Plan the week", "Review priorities"));
+        first.setCompleted(true);
+        taskRepository.save(first);
+        taskRepository.save(new Task("Buy milk", "Plan dinner"));
+
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mockMvc.perform(get("/api/tasks?status=active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Buy milk"));
+
+        mockMvc.perform(get("/api/tasks?status=completed"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Plan the week"));
+
+        mockMvc.perform(get("/api/tasks?search=PLAN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        mockMvc.perform(get("/api/tasks?search=PRIORITIES"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Plan the week"));
+
+        mockMvc.perform(get("/api/tasks?status=active&search=plan"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Buy milk"));
+
+        mockMvc.perform(get("/api/tasks?sort=oldest"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Plan the week"));
+
+        mockMvc.perform(get("/api/tasks?sort=NEWEST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Buy milk"));
+    }
+
+    @Test
+    void invalidTaskQueryValuesReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/api/tasks?status=paused"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid task status: paused"));
+
+        mockMvc.perform(get("/api/tasks?sort=random"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid task sort: random"));
     }
 }

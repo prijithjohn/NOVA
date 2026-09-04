@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -27,8 +28,11 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<TaskResponse> list() {
-        return taskService.findAll().stream().map(TaskResponse::from).toList();
+    public List<TaskResponse> list(
+            @RequestParam(defaultValue = "all") String status,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "newest") String sort) {
+        return taskService.findAll(status, search, sort).stream().map(TaskResponse::from).toList();
     }
 
     @PostMapping

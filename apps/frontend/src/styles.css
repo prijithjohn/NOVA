@@ -215,6 +215,41 @@ textarea::placeholder {
   border-bottom: 1px solid rgba(23, 53, 46, 0.18);
 }
 
+.task-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1.4fr) minmax(
+      150px,
+      0.9fr
+    );
+  gap: 0.75rem;
+  margin: 1.2rem 0;
+  padding-bottom: 1.2rem;
+  border-bottom: 1px solid rgba(23, 53, 46, 0.14);
+}
+
+.task-controls label {
+  margin-bottom: 0;
+}
+
+select {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(23, 53, 46, 0.25);
+  border-radius: 0.25rem;
+  outline: none;
+  color: #17352e;
+  background: #fffdf7;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+select:focus {
+  border-color: #2c8155;
+  box-shadow: 0 0 0 3px rgba(44, 129, 85, 0.15);
+}
+
 .task-count {
   padding-top: 0.35rem;
   white-space: nowrap;
@@ -347,6 +382,15 @@ textarea::placeholder {
   .workspace {
     display: block;
     padding-top: 2rem;
+  }
+
+  .task-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .task-controls label:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 1;
   }
 
   .task-form {

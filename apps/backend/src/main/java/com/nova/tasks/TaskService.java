@@ -17,8 +17,17 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<Task> findAll() {
-        return taskRepository.findAllByOrderByCreatedAtDesc();
+    public List<Task> findAll(String statusValue, String search, String sortValue) {
+        TaskStatus status = TaskStatus.parse(statusValue);
+        TaskSort sort = TaskSort.parse(sortValue);
+        Boolean completed = switch (status) {
+            case ALL -> null;
+            case ACTIVE -> false;
+            case COMPLETED -> true;
+        };
+        String normalizedSearch = search == null ? "" : search.trim();
+        String normalizedSort = sort == TaskSort.OLDEST ? "oldest" : "newest";
+        return taskRepository.findFiltered(completed, normalizedSearch, normalizedSort);
     }
 
     public Task create(String title, String description) {

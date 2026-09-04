@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 
 import { createTask, deleteTask, listTasks, updateTask } from './api';
-import type { Task } from './api';
+import type { Task, TaskQuery, TaskSort, TaskStatus } from './api';
 import './styles.css';
 
 type ViewState = 'loading' | 'ready' | 'error';
@@ -14,8 +14,15 @@ export function formatTaskDate(value: string): string {
   }).format(new Date(value));
 }
 
+const initialQuery: TaskQuery = {
+  status: 'all',
+  search: '',
+  sort: 'newest',
+};
+
 export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [query, setQuery] = useState<TaskQuery>(initialQuery);
   const [viewState, setViewState] = useState<ViewState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -25,16 +32,39 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    listTasks()
+    let active = true;
+    setViewState('loading');
+    setError(null);
+
+    listTasks(query)
       .then((loadedTasks) => {
-        setTasks(loadedTasks);
-        setViewState('ready');
+        if (active) {
+          setTasks(loadedTasks);
+          setViewState('ready');
+        }
       })
       .catch((loadError: Error) => {
-        setError(loadError.message);
-        setViewState('error');
+        if (active) {
+          setError(loadError.message);
+          setViewState('error');
+        }
       });
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [query]);
+
+  function updateQuery<K extends keyof TaskQuery>(key: K, value: TaskQuery[K]) {
+    setQuery((currentQuery) => ({ ...currentQuery, [key]: value }));
+    setNotice(null);
+  }
+
+  async function reloadCurrentView() {
+    const loadedTasks = await listTasks(query);
+    setTasks(loadedTasks);
+    setViewState('ready');
+  }
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,8 +76,8 @@ export function App() {
     setError(null);
     setNotice(null);
     try {
-      const task = await createTask({ title, description });
-      setTasks((currentTasks) => [task, ...currentTasks]);
+      await createTask({ title, description });
+      await reloadCurrentView();
       setTitle('');
       setDescription('');
       setNotice('Task created.');
@@ -70,11 +100,7 @@ export function App() {
       const updatedTask = await updateTask(task.id, {
         completed: !task.completed,
       });
-      setTasks((currentTasks) =>
-        currentTasks.map((currentTask) =>
-          currentTask.id === updatedTask.id ? updatedTask : currentTask,
-        ),
-      );
+      await reloadCurrentView();
       setNotice(updatedTask.completed ? 'Task completed.' : 'Task reopened.');
     } catch (updateError) {
       setError((updateError as Error).message);
@@ -93,9 +119,7 @@ export function App() {
     setNotice(null);
     try {
       await deleteTask(task.id);
-      setTasks((currentTasks) =>
-        currentTasks.filter((currentTask) => currentTask.id !== task.id),
-      );
+      await reloadCurrentView();
       setNotice('Task deleted.');
     } catch (deleteError) {
       setError((deleteError as Error).message);
@@ -103,6 +127,8 @@ export function App() {
       setBusyTaskId(null);
     }
   }
+
+  const hasQuery = query.status !== 'all' || query.search.trim() !== '';
 
   return (
     <main className="app-shell">
@@ -164,8 +190,47 @@ export function App() {
               <h2 id="tasks-heading">Tasks</h2>
             </div>
             <span className="task-count">
-              {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+              {tasks.length} {tasks.length === 1 ? 'task shown' : 'tasks shown'}
             </span>
+          </div>
+
+          <div className="task-controls" aria-label="Task query controls">
+            <label>
+              Filter
+              <select
+                aria-label="Task status filter"
+                value={query.status}
+                onChange={(event) =>
+                  updateQuery('status', event.target.value as TaskStatus)
+                }
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </label>
+            <label>
+              Search
+              <input
+                aria-label="Search tasks"
+                value={query.search}
+                onChange={(event) => updateQuery('search', event.target.value)}
+                placeholder="Title or description"
+              />
+            </label>
+            <label>
+              Sort
+              <select
+                aria-label="Task sort order"
+                value={query.sort}
+                onChange={(event) =>
+                  updateQuery('sort', event.target.value as TaskSort)
+                }
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </label>
           </div>
 
           {notice && (
@@ -179,7 +244,7 @@ export function App() {
             </p>
           )}
           {viewState === 'loading' && (
-            <p className="state-message">Loading persisted tasks...</p>
+            <p className="state-message">Loading tasks from the database...</p>
           )}
           {viewState === 'error' && (
             <p className="state-message">
@@ -189,7 +254,9 @@ export function App() {
           )}
           {viewState === 'ready' && tasks.length === 0 && (
             <p className="state-message">
-              No tasks yet. Add the first one when you are ready.
+              {hasQuery
+                ? 'No matching tasks. Try a different filter or search.'
+                : 'No tasks yet. Add the first one when you are ready.'}
             </p>
           )}
           {tasks.length > 0 && (
