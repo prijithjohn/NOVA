@@ -123,3 +123,29 @@ export function createTaskWithAssistant(
     }),
   });
 }
+
+export interface Memory {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMemoryInput {
+  content: string;
+}
+
+export function listMemories(): Promise<Memory[]> {
+  return request<Memory[]>('/memories');
+}
+
+export function createMemory(input: CreateMemoryInput): Promise<Memory> {
+  return request<Memory>('/memories', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteMemory(id: string): Promise<void> {
+  return request<void>(`/memories/${id}`, { method: 'DELETE' });
+}

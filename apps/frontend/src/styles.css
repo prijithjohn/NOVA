@@ -116,6 +116,38 @@ h1 {
   padding-top: 3rem;
 }
 
+.domain-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.domain-tab {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(89, 118, 106, 0.3);
+  border-radius: 0.35rem;
+  background: transparent;
+  color: #59766a;
+  cursor: pointer;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.15s ease-in-out;
+}
+
+.domain-tab:hover {
+  border-color: #214336;
+  color: #173227;
+}
+
+.domain-tab.is-active {
+  border-color: #214336;
+  background: #214336;
+  color: #f7faf8;
+}
+
 .assistant-panel {
   max-width: 760px;
   margin-top: 2rem;
@@ -136,7 +168,9 @@ h1 {
 }
 
 .task-form,
-.task-list {
+.task-list,
+.memory-form,
+.memory-list {
   min-width: 0;
 }
 
@@ -413,6 +447,39 @@ select:focus {
   text-decoration: underline;
 }
 
+.memories {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding: 1.2rem 1.4rem;
+  border: 1px solid rgba(89, 118, 106, 0.22);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.memory-content p {
+  margin-bottom: 0.55rem;
+  color: #17352e;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.memory-content time {
+  color: #789087;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.68rem;
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: min(100% - 2rem, 560px);
@@ -470,7 +537,8 @@ select:focus {
     grid-row: 3;
   }
 
-  .task-form {
+  .task-form,
+  .memory-form {
     margin-bottom: 2.5rem;
   }
 }

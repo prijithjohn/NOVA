@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import com.nova.memories.MemoryRepository;
 import com.nova.tasks.Task;
 import com.nova.tasks.TaskPriority;
 import com.nova.tasks.TaskRepository;
@@ -33,11 +34,15 @@ class NovaApplicationTests {
     @Autowired
     private TaskRepository taskRepository;
 
-        @Autowired
-        private AssistantActionExecutionRepository assistantActionExecutionRepository;
+    @Autowired
+    private AssistantActionExecutionRepository assistantActionExecutionRepository;
+
+    @Autowired
+    private MemoryRepository memoryRepository;
 
     @BeforeEach
-    void clearTasks() {
+    void clearDatabase() {
+        memoryRepository.deleteAll();
         assistantActionExecutionRepository.deleteAll();
         taskRepository.deleteAll();
     }
@@ -244,5 +249,64 @@ class NovaApplicationTests {
         mockMvc.perform(get("/api/tasks?priority=urgent"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Invalid task priority: urgent"));
+    }
+
+    @Test
+    void memoryCreationAndRetrievalSucceeds() throws Exception {
+        mockMvc.perform(post("/api/memories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"User prefers concise answers.\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.content").value("User prefers concise answers."))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/memories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].content").value("User prefers concise answers."));
+    }
+
+    @Test
+    void memoryValidationRejectsBlankContent() throws Exception {
+        mockMvc.perform(post("/api/memories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Content is required"));
+
+        mockMvc.perform(post("/api/memories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Content is required"));
+    }
+
+    @Test
+    void memoryDeletionSucceeds() throws Exception {
+        String response = mockMvc.perform(post("/api/memories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Temporary memory.\"}"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String id = response.replaceAll(".*\\\"id\\\":\\\"([^\\\"]+)\\\".*", "$1");
+
+        mockMvc.perform(delete("/api/memories/" + id))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/memories"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
+    void missingMemoryReturns404() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        mockMvc.perform(delete("/api/memories/" + missingId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Memory not found: " + missingId));
     }
 }

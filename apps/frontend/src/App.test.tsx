@@ -281,4 +281,111 @@ describe('task workspace', () => {
       'Assistant action failed',
     );
   });
+
+  it('creates, lists, and deletes a memory through the API', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const existingMemory = {
+      id: 'mem-1',
+      content: 'User prefers concise answers.',
+      createdAt: '2026-09-04T10:00:00Z',
+      updatedAt: '2026-09-04T10:00:00Z',
+    };
+    const newMemory = {
+      id: 'mem-2',
+      content: 'Prefers dark mode.',
+      createdAt: '2026-09-04T10:05:00Z',
+      updatedAt: '2026-09-04T10:05:00Z',
+    };
+
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([existingMemory]), { status: 200 }), // memories on switch
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(newMemory), { status: 201 }), // create memory
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([existingMemory, newMemory]), {
+          status: 200,
+        }), // reload memories
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 })) // delete memory
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([newMemory]), { status: 200 }), // reload memories
+      );
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Memory' }));
+    expect(
+      await screen.findByText('User prefers concise answers.'),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText('Memory content'),
+      'Prefers dark mode.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save memory' }));
+    expect(await screen.findByText('Memory saved.')).toBeInTheDocument();
+    expect(await screen.findByText('Prefers dark mode.')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Delete memory: User prefers concise answers.',
+      }),
+    );
+    expect(await screen.findByText('Memory deleted.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('User prefers concise answers.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows memory loading, empty, and error states', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })); // memories on switch
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Memory' }));
+    expect(
+      await screen.findByText(
+        'No memories saved yet. Capture durable context to remember what matters.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('0 memories shown')).toBeInTheDocument();
+  });
+
+  it('shows memory error states when request fails', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockRejectedValueOnce(new Error('Failed to load memories'));
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Memory' }));
+    expect(
+      await screen.findByText(
+        'Memories could not be loaded. Check the backend and database connection.',
+      ),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Failed to load memories',
+    );
+  });
 });

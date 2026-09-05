@@ -11,6 +11,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.nova.assistant.AssistantActionNotSupportedException;
 import com.nova.assistant.AssistantToolNotFoundException;
+import com.nova.memories.MemoryNotFoundException;
 import com.nova.tasks.TaskNotFoundException;
 
 @RestControllerAdvice
@@ -18,6 +19,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(TaskNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(TaskNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MemoryNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleMemoryNotFound(MemoryNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", exception.getMessage()));
     }
