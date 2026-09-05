@@ -1,4 +1,15 @@
 package com.nova.assistant;
 
-public record AssistantChatResponse(String reply) {
+import com.nova.tasks.TaskResponse;
+
+public record AssistantChatResponse(
+        String reply,
+        String action,
+        TaskResponse task
+) {
+    public AssistantChatResponse(String reply) {
+        this(reply, "none", (TaskResponse) null);
+    }
 }
+
+

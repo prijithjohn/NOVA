@@ -6,42 +6,42 @@
 
 ## Current Slice
 
-**AI Provider Foundation — Ollama**
+**AI Structured Tool Calling**
 
-This slice is complete. NOVA now provides a clean AI provider abstraction (`AIProvider`) backed by a local `OllamaProvider` implementation. A dedicated, read-only chat endpoint `POST /api/assistant/chat` allows users to converse with the AI provider from a functional, responsive frontend tab.
+This slice is complete. NOVA now connects natural-language Assistant chat to controlled tool execution (`AssistantToolRegistry` -> `CreateTaskTool` -> `TaskService` -> PostgreSQL) via structured AI decisions.
 
 ## Implemented
 
-- `AIProvider` interface defining the contract for AI provider communication (`String chat(String userMessage)`).
-- `AIProviderException` for clean error handling across unavailable, timeout, HTTP, and JSON parsing failures (mapped to HTTP 502 Bad Gateway in `ApiExceptionHandler`).
-- `OllamaProvider` implementing `AIProvider` with Jackson 3.x and Spring `RestClient` targeting Ollama's `/api/generate` endpoint.
-- Configured base URL and model via environment variables (`OLLAMA_BASE_URL` and `OLLAMA_MODEL`) with local defaults (`http://localhost:11434` and `llama3`).
-- `AssistantChatService` depending exclusively on `AIProvider` (isolated from Tasks, Memory, and DB repos).
-- `AssistantChatController` exposing `POST /api/assistant/chat` accepting validated `AssistantChatRequest` (`message`) and returning `AssistantChatResponse` (`reply`).
-- Responsive frontend Assistant tab UI allowing real-time chat with the AI provider, complete with loading, reply, and error state feedback.
-- Mocked `AIProvider` in Spring Boot integration tests ensuring full test execution without requiring a live Ollama process.
-- Verified all 15 backend Spring Boot integration tests and 10 frontend unit/integration tests pass.
+- `AIProvider.AssistantDecision` structured decision contract (`action`, `arguments`, `reply`).
+- `OllamaProvider.decide(userMessage)` sending system instructions and JSON mode (`"format": "json"`) to Ollama `/api/generate`.
+- `AssistantChatService` validating AI proposed decisions:
+  - `"none"`: returns conversational reply without mutation.
+  - `"create_task"`: validates non-blank title and allowed priority enums (`LOW`/`MEDIUM`/`HIGH`), generates idempotency key, and executes via `AssistantToolRegistry` -> `CreateTaskTool`.
+  - Unknown/unsupported actions: rejected safely without executing tool or mutating database.
+- `AssistantChatResponse` updated to return `reply`, `action`, and `task` (`TaskResponse`).
+- Updated Assistant chat UI to display created task details when task creation tool is executed by the AI.
+- Comprehensive integration tests covering natural-language task creation, `"none"` decision, unknown action rejection, invalid priority rejection, malformed AI JSON output handling, and provider 502 error handling.
+- Verified 18 backend Spring Boot integration tests and 11 frontend unit/integration tests pass.
 
 ## Architecture Boundary
 
-`React -> POST /api/assistant/chat -> AssistantChatService -> AIProvider -> OllamaProvider -> Ollama`
+`User -> POST /api/assistant/chat -> AssistantChatService -> AIProvider -> Structured Decision -> Backend Validation -> AssistantToolRegistry -> CreateTaskTool -> TaskService -> PostgreSQL`
 
-The AI Provider domain is read-only and strictly isolated from Task and Memory repositories, JPA entities, and database access.
+The AI model proposes structured actions; backend validation strictly enforces security and execution boundaries before invoking tools.
 
 ## Out of Scope
 
-- Tool execution or Assistant tool calling
-- Memory/Task access from AI classes
-- Direct DB mutation from AI classes
-- Embeddings, pgvector, or RAG
-- Gemini or OpenAI providers
-- Multi-turn conversation persistence
+- Multi-tool orchestration or autonomous agent loops
+- Memory domain tool calling or semantic search
+- Direct DB access or entity access from AI classes
+- Gemini/OpenAI providers or RAG/pgvector
 
 ## Validation Status
 
-Backend Maven tests (`15 passed`), frontend typecheck, lint, vitest tests (`10 passed`), and production build pass for this slice.
+Backend Maven tests (`18 passed`), frontend typecheck, lint, vitest tests (`11 passed`), and production build pass for this slice.
 
 ## Next Phase 2 Work
 
-The next slice will introduce Assistant tool capabilities or memory integration as explicitly planned.
+The next slice will introduce Memory domain tools or assistant context integration as planned.
+
 

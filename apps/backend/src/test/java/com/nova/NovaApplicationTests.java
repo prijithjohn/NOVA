@@ -334,7 +334,7 @@ class NovaApplicationTests {
 
     @Test
     void assistantChatReturns502WhenProviderUnavailable() throws Exception {
-        given(aiProvider.chat("hello")).willThrow(new AIProviderException("Provider unavailable"));
+        given(aiProvider.decide("hello")).willThrow(new AIProviderException("Provider unavailable"));
 
         mockMvc.perform(post("/api/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -344,13 +344,75 @@ class NovaApplicationTests {
     }
 
     @Test
-    void assistantChatReturnsProviderReply() throws Exception {
-        given(aiProvider.chat("What is NOVA?")).willReturn("NOVA is your personal AI operating system.");
+    void assistantChatExecutesCreateTaskActionAndPersistsTask() throws Exception {
+        given(aiProvider.decide("Create a task to apply for jobs"))
+                .willReturn(new AIProvider.AssistantDecision(
+                        "create_task",
+                        java.util.Map.of("title", "Apply for jobs", "description", "Backend positions", "priority", "HIGH"),
+                        "Task created successfully."));
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Create a task to apply for jobs\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.action").value("create_task"))
+                .andExpect(jsonPath("$.reply").value("Task created successfully."))
+                .andExpect(jsonPath("$.task.title").value("Apply for jobs"))
+                .andExpect(jsonPath("$.task.priority").value("HIGH"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(1, taskRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals("Apply for jobs", taskRepository.findAll().get(0).getTitle());
+    }
+
+    @Test
+    void assistantChatActionNoneDoesNotMutateDatabase() throws Exception {
+        given(aiProvider.decide("What is NOVA?"))
+                .willReturn(new AIProvider.AssistantDecision(
+                        "none",
+                        java.util.Map.of(),
+                        "NOVA is your personal AI operating system."));
 
         mockMvc.perform(post("/api/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"What is NOVA?\"}"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.action").value("none"))
                 .andExpect(jsonPath("$.reply").value("NOVA is your personal AI operating system."));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, taskRepository.count());
+    }
+
+    @Test
+    void assistantChatUnknownActionIsRejectedSafely() throws Exception {
+        given(aiProvider.decide("Drop database"))
+                .willReturn(new AIProvider.AssistantDecision(
+                        "unsupported_action",
+                        java.util.Map.of(),
+                        "I cannot do that."));
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Drop database\"}"))
+                .andExpect(status().isBadRequest());
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, taskRepository.count());
+    }
+
+    @Test
+    void assistantChatInvalidTaskPriorityIsRejectedSafely() throws Exception {
+        given(aiProvider.decide("Create task with bad priority"))
+                .willReturn(new AIProvider.AssistantDecision(
+                        "create_task",
+                        java.util.Map.of("title", "Bad priority task", "priority", "URGENT"),
+                        "Attempting creation"));
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Create task with bad priority\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid task priority proposed by AI: URGENT"));
+
+        org.junit.jupiter.api.Assertions.assertEquals(0, taskRepository.count());
     }
 }
+

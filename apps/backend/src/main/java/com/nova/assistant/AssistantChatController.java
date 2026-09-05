@@ -32,7 +32,8 @@ public class AssistantChatController {
      */
     @PostMapping("/chat")
     public ResponseEntity<AssistantChatResponse> chat(@Valid @RequestBody AssistantChatRequest request) {
-        String reply = assistantChatService.chat(request.message());
-        return ResponseEntity.ok(new AssistantChatResponse(reply));
+        AssistantChatResponse response = assistantChatService.chat(request.message());
+        return ResponseEntity.ok(response);
     }
+
 }

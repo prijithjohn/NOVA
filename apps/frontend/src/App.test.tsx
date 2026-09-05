@@ -445,6 +445,53 @@ describe('task workspace', () => {
       'AI provider unavailable',
     );
   });
+
+  it('displays created task badge when assistant chat creates a task', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const createdTask = {
+      id: 'task-100',
+      title: 'Apply for backend jobs',
+      description: 'Send resume',
+      completed: false,
+      priority: 'HIGH' as const,
+      createdAt: '2026-09-05T10:00:00Z',
+      updatedAt: '2026-09-05T10:00:00Z',
+    };
+
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            reply: 'Task created successfully.',
+            action: 'create_task',
+            task: createdTask,
+          }),
+          { status: 200 },
+        ),
+      );
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Assistant' }));
+    await user.type(
+      screen.getByLabelText('Your message'),
+      'Create a task to apply for backend jobs',
+    );
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+    expect(
+      await screen.findByText('Task created successfully.'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Apply for backend jobs'),
+    ).toBeInTheDocument();
+  });
 });
+
 
 

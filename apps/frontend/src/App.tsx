@@ -13,6 +13,7 @@ import {
   updateTask,
 } from './api';
 import type {
+  AssistantChatResponse,
   Memory,
   Task,
   TaskPriority,
@@ -73,7 +74,9 @@ export function App() {
   const [chatMessage, setChatMessage] = useState('');
   const [chatState, setChatState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [chatReply, setChatReply] = useState<string | null>(null);
+  const [chatResponse, setChatResponse] = useState<AssistantChatResponse | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
+
 
   useEffect(() => {
     let active = true;
@@ -284,10 +287,12 @@ export function App() {
 
     setChatState('loading');
     setChatReply(null);
+    setChatResponse(null);
     setChatError(null);
     try {
       const response = await sendAssistantChat({ message: chatMessage });
       setChatReply(response.reply);
+      setChatResponse(response);
       setChatState('success');
     } catch (chatErr) {
       setChatError((chatErr as Error).message);
@@ -327,16 +332,10 @@ export function App() {
               Assistant
             </button>
           </nav>
-          <p className="eyebrow">
-            {activeDomain === 'tasks'
-              ? 'NOVA / Tasks'
-              : activeDomain === 'memories'
-                ? 'NOVA / Memory'
-                : 'NOVA / Assistant'}
-          </p>
+          <p className="eyebrow">NOVA / {activeDomain === 'tasks' ? 'Tasks' : activeDomain === 'memories' ? 'Memory' : 'Assistant'}</p>
           <h1>
             {activeDomain === 'tasks'
-              ? 'Make the next thing clear.'
+              ? 'Keep your personal context structured.'
               : activeDomain === 'memories'
                 ? 'Remember what matters.'
                 : 'Ask your AI assistant.'}
@@ -353,149 +352,152 @@ export function App() {
       </header>
 
       {activeDomain === 'tasks' && (
-        <>
-          <form className="assistant-panel" onSubmit={handleAssistantCreate}>
-            <div className="section-heading">
-              <div>
-                <p className="section-kicker">Assistant action</p>
-                <h2>Create a task</h2>
-              </div>
-              <span className="required-note">Controlled tool</span>
-            </div>
-            <div className="assistant-fields">
-              <label>
-                Task title
-                <input
-                  aria-label="Assistant task title"
-                  value={assistantTitle}
-                  onChange={(event) => setAssistantTitle(event.target.value)}
-                  maxLength={200}
-                  placeholder="Ask NOVA to create a task"
-                  required
-                />
-              </label>
-              <label>
-                Priority
-                <select
-                  aria-label="Assistant task priority"
-                  value={assistantPriority}
-                  onChange={(event) =>
-                    setAssistantPriority(
-                      event.target.value as Exclude<TaskPriority, 'all'>,
-                    )
-                  }
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                </select>
-              </label>
-            </div>
-            <label>
-              Context <span className="optional">Optional</span>
-              <textarea
-                aria-label="Assistant task description"
-                value={assistantDescription}
-                onChange={(event) =>
-                  setAssistantDescription(event.target.value)
-                }
-                maxLength={2000}
-                rows={2}
-                placeholder="Add task context"
-              />
-            </label>
-            <button
-              className="primary-button assistant-submit"
-              type="submit"
-              disabled={assistantState === 'loading' || !assistantTitle.trim()}
-            >
-              {assistantState === 'loading'
-                ? 'Working...'
-                : 'Create with Assistant'}
-            </button>
-            {assistantResult && (
-              <p className="notice" role="status">
-                {assistantResult}
-              </p>
-            )}
-            {assistantError && (
-              <p className="error-message" role="alert">
-                {assistantError}
-              </p>
-            )}
-          </form>
-
-          <section className="workspace" aria-label="Task workspace">
-            <form className="task-form" onSubmit={handleCreate}>
+        <section className="workspace-layout">
+          <aside className="workspace-sidebar" aria-label="Assistant shortcut workspace">
+            <form className="assistant-card" onSubmit={handleAssistantCreate}>
               <div className="section-heading">
                 <div>
-                  <p className="section-kicker">New task</p>
-                  <h2>What needs doing?</h2>
+                  <p className="section-kicker">Structured action</p>
+                  <h2>Create task</h2>
                 </div>
                 <span className="required-note">Title required</span>
               </div>
               <label>
-                Title
+                Task title
                 <input
-                  aria-label="Task title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  maxLength={200}
-                  placeholder="Write a clear next action"
+                  aria-label="Assistant task title"
+                  type="text"
+                  value={assistantTitle}
+                  onChange={(event) => setAssistantTitle(event.target.value)}
+                  placeholder="Draft project roadmap"
                   required
                 />
               </label>
               <label>
-                Description <span className="optional">Optional</span>
+                Description
                 <textarea
-                  aria-label="Task description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  maxLength={2000}
-                  rows={4}
-                  placeholder="Add useful context"
+                  aria-label="Assistant task description"
+                  value={assistantDescription}
+                  onChange={(event) => setAssistantDescription(event.target.value)}
+                  placeholder="Outline core domains, data model, and API endpoints."
+                  rows={3}
                 />
               </label>
-              <label>
-                Priority
-                <select
-                  aria-label="New task priority"
-                  value={newTaskPriority}
-                  onChange={(event) =>
-                    setNewTaskPriority(
-                      event.target.value as Exclude<TaskPriority, 'all'>,
-                    )
-                  }
+              <div className="form-row">
+                <label>
+                  Priority
+                  <select
+                    aria-label="Assistant task priority"
+                    value={assistantPriority}
+                    onChange={(event) =>
+                      setAssistantPriority(
+                        event.target.value as Exclude<TaskPriority, 'all'>,
+                      )
+                    }
+                  >
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </label>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={assistantState === 'loading' || !assistantTitle.trim()}
                 >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                </select>
-              </label>
-              <button
-                className="primary-button"
-                type="submit"
-                disabled={submitting || !title.trim()}
-              >
-                {submitting ? 'Saving...' : 'Create task'}
-              </button>
+                  {assistantState === 'loading' ? 'Working...' : 'Create with Assistant'}
+                </button>
+              </div>
+              {assistantResult && (
+                <p className="notice" role="status">
+                  {assistantResult}
+                </p>
+              )}
+              {assistantError && (
+                <p className="error-message" role="alert">
+                  {assistantError}
+                </p>
+              )}
+            </form>
+          </aside>
+
+          <section className="workspace task-workspace" aria-label="Task workspace">
+            <form className="task-form" onSubmit={handleCreate}>
+              <div className="section-heading">
+                <div>
+                  <p className="section-kicker">Create task</p>
+                  <h2>What needs to be done?</h2>
+                </div>
+                <span className="required-note">Title required</span>
+              </div>
+
+              <div className="form-grid">
+                <label className="field-span-2">
+                  Task title
+                  <input
+                    aria-label="Task title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Refactor the storage layer"
+                    required
+                  />
+                </label>
+
+                <label className="field-span-2">
+                  Description
+                  <textarea
+                    aria-label="Task description"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Capture why this task matters and what success looks like."
+                    rows={2}
+                  />
+                </label>
+
+                <label>
+                  Priority
+                  <select
+                    aria-label="New task priority"
+                    value={newTaskPriority}
+                    onChange={(event) =>
+                      setNewTaskPriority(
+                        event.target.value as Exclude<TaskPriority, 'all'>,
+                      )
+                    }
+                  >
+                    <option value="LOW">LOW</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HIGH">HIGH</option>
+                  </select>
+                </label>
+
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={submitting || !title.trim()}
+                  >
+                    {submitting ? 'Saving...' : 'Create task'}
+                  </button>
+                </div>
+              </div>
             </form>
 
             <section className="task-list" aria-labelledby="tasks-heading">
               <div className="section-heading list-heading">
                 <div>
-                  <p className="section-kicker">Your work</p>
+                  <p className="section-kicker">Workspace tasks</p>
                   <h2 id="tasks-heading">Tasks</h2>
                 </div>
                 <span className="task-count">
-                  {tasks.length}{' '}
-                  {tasks.length === 1 ? 'task shown' : 'tasks shown'}
+                  {tasks.length} {tasks.length === 1 ? 'task shown' : 'tasks shown'}
                 </span>
               </div>
 
-              <div className="task-controls" aria-label="Task query controls">
+              <div className="filter-bar" role="search" aria-label="Filter tasks">
                 <label>
-                  Filter
+                  Status
                   <select
                     aria-label="Task status filter"
                     value={query.status}
@@ -508,35 +510,34 @@ export function App() {
                     <option value="completed">Completed</option>
                   </select>
                 </label>
+
                 <label>
                   Priority
                   <select
                     aria-label="Task priority filter"
                     value={query.priority}
                     onChange={(event) =>
-                      updateQuery(
-                        'priority',
-                        event.target.value as TaskPriority,
-                      )
+                      updateQuery('priority', event.target.value as TaskPriority)
                     }
                   >
                     <option value="all">All priorities</option>
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
                   </select>
                 </label>
-                <label>
+
+                <label className="search-field">
                   Search
                   <input
                     aria-label="Search tasks"
+                    type="search"
                     value={query.search}
-                    onChange={(event) =>
-                      updateQuery('search', event.target.value)
-                    }
-                    placeholder="Title or description"
+                    onChange={(event) => updateQuery('search', event.target.value)}
+                    placeholder="Filter title or description"
                   />
                 </label>
+
                 <label>
                   Sort
                   <select
@@ -563,14 +564,11 @@ export function App() {
                 </p>
               )}
               {viewState === 'loading' && (
-                <p className="state-message">
-                  Loading tasks from the database...
-                </p>
+                <p className="state-message">Loading tasks from the database...</p>
               )}
               {viewState === 'error' && (
                 <p className="state-message">
-                  Tasks could not be loaded. Check the backend and database
-                  connection.
+                  Tasks could not be loaded. Check the backend and database connection.
                 </p>
               )}
               {viewState === 'ready' && tasks.length === 0 && (
@@ -580,21 +578,18 @@ export function App() {
                     : 'No tasks yet. Add the first one when you are ready.'}
                 </p>
               )}
+
               {tasks.length > 0 && (
                 <ul className="tasks">
                   {tasks.map((task) => (
                     <li
-                      className={`task-item ${task.completed ? 'is-complete' : ''}`}
+                      className={`task-item ${task.completed ? 'is-completed' : ''}`}
                       key={task.id}
                     >
                       <button
-                        className="complete-button"
+                        className="status-toggle"
                         type="button"
-                        aria-label={
-                          task.completed
-                            ? `Reopen ${task.title}`
-                            : `Complete ${task.title}`
-                        }
+                        aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${task.title}`}
                         onClick={() => handleToggle(task)}
                         disabled={busyTaskId !== null}
                       >
@@ -629,7 +624,7 @@ export function App() {
               )}
             </section>
           </section>
-        </>
+        </section>
       )}
 
       {activeDomain === 'memories' && (
@@ -740,7 +735,7 @@ export function App() {
                 <p className="section-kicker">AI provider</p>
                 <h2>Send a message</h2>
               </div>
-              <span className="required-note">Read-only — no mutations</span>
+              <span className="required-note">Structured tool calling</span>
             </div>
             <label>
               Your message
@@ -750,7 +745,7 @@ export function App() {
                 onChange={(event) => setChatMessage(event.target.value)}
                 maxLength={4000}
                 rows={4}
-                placeholder="Ask the assistant anything"
+                placeholder="Ask the assistant anything or request task creation (e.g. 'Create a task to apply for backend jobs')"
                 required
               />
             </label>
@@ -773,6 +768,11 @@ export function App() {
               </div>
               <div className="chat-reply-content">
                 <p>{chatReply}</p>
+                {chatResponse?.task && (
+                  <p className="notice" role="status">
+                    Task created via tool: <strong>{chatResponse.task.title}</strong> ({chatResponse.task.priority})
+                  </p>
+                )}
               </div>
             </section>
           )}

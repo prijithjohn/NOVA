@@ -156,7 +156,10 @@ export interface AssistantChatInput {
 
 export interface AssistantChatResponse {
   reply: string;
+  action?: string;
+  task?: Task;
 }
+
 
 export function sendAssistantChat(
   input: AssistantChatInput,
