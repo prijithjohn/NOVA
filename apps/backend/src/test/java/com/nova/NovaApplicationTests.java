@@ -7,9 +7,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.BDDMockito.given;
 
 import java.util.UUID;
 
+import com.nova.ai.AIProvider;
+import com.nova.ai.AIProviderException;
 import com.nova.memories.MemoryRepository;
 import com.nova.tasks.Task;
 import com.nova.tasks.TaskPriority;
@@ -22,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -39,6 +43,9 @@ class NovaApplicationTests {
 
     @Autowired
     private MemoryRepository memoryRepository;
+
+    @MockitoBean
+    private AIProvider aiProvider;
 
     @BeforeEach
     void clearDatabase() {
@@ -308,5 +315,42 @@ class NovaApplicationTests {
         mockMvc.perform(delete("/api/memories/" + missingId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Memory not found: " + missingId));
+    }
+
+    @Test
+    void assistantChatRejectsBlankMessage() throws Exception {
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Message is required"));
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Message is required"));
+    }
+
+    @Test
+    void assistantChatReturns502WhenProviderUnavailable() throws Exception {
+        given(aiProvider.chat("hello")).willThrow(new AIProviderException("Provider unavailable"));
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"hello\"}"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.error").value("Provider unavailable"));
+    }
+
+    @Test
+    void assistantChatReturnsProviderReply() throws Exception {
+        given(aiProvider.chat("What is NOVA?")).willReturn("NOVA is your personal AI operating system.");
+
+        mockMvc.perform(post("/api/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"What is NOVA?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply").value("NOVA is your personal AI operating system."));
     }
 }

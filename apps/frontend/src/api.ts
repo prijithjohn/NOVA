@@ -149,3 +149,20 @@ export function createMemory(input: CreateMemoryInput): Promise<Memory> {
 export function deleteMemory(id: string): Promise<void> {
   return request<void>(`/memories/${id}`, { method: 'DELETE' });
 }
+
+export interface AssistantChatInput {
+  message: string;
+}
+
+export interface AssistantChatResponse {
+  reply: string;
+}
+
+export function sendAssistantChat(
+  input: AssistantChatInput,
+): Promise<AssistantChatResponse> {
+  return request<AssistantChatResponse>('/assistant/chat', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}

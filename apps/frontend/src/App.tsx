@@ -9,6 +9,7 @@ import {
   deleteTask,
   listMemories,
   listTasks,
+  sendAssistantChat,
   updateTask,
 } from './api';
 import type {
@@ -22,7 +23,7 @@ import type {
 import './styles.css';
 
 type ViewState = 'loading' | 'ready' | 'error';
-type Domain = 'tasks' | 'memories';
+type Domain = 'tasks' | 'memories' | 'assistant';
 
 export function formatTaskDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -68,6 +69,11 @@ export function App() {
   const [memorySubmitting, setMemorySubmitting] = useState(false);
   const [busyMemoryId, setBusyMemoryId] = useState<string | null>(null);
   const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
+
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatState, setChatState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [chatReply, setChatReply] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -270,6 +276,25 @@ export function App() {
     }
   }
 
+  async function handleChat(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!chatMessage.trim() || chatState === 'loading') {
+      return;
+    }
+
+    setChatState('loading');
+    setChatReply(null);
+    setChatError(null);
+    try {
+      const response = await sendAssistantChat({ message: chatMessage });
+      setChatReply(response.reply);
+      setChatState('success');
+    } catch (chatErr) {
+      setChatError((chatErr as Error).message);
+      setChatState('error');
+    }
+  }
+
   const hasQuery =
     query.status !== 'all' ||
     query.priority !== 'all' ||
@@ -294,19 +319,34 @@ export function App() {
             >
               Memory
             </button>
+            <button
+              className={`domain-tab ${activeDomain === 'assistant' ? 'is-active' : ''}`}
+              type="button"
+              onClick={() => setActiveDomain('assistant')}
+            >
+              Assistant
+            </button>
           </nav>
           <p className="eyebrow">
-            {activeDomain === 'tasks' ? 'NOVA / Tasks' : 'NOVA / Memory'}
+            {activeDomain === 'tasks'
+              ? 'NOVA / Tasks'
+              : activeDomain === 'memories'
+                ? 'NOVA / Memory'
+                : 'NOVA / Assistant'}
           </p>
           <h1>
             {activeDomain === 'tasks'
               ? 'Make the next thing clear.'
-              : 'Remember what matters.'}
+              : activeDomain === 'memories'
+                ? 'Remember what matters.'
+                : 'Ask your AI assistant.'}
           </h1>
           <p className="page-summary">
             {activeDomain === 'tasks'
               ? 'Capture work you intend to complete, then keep its state honest.'
-              : 'Capture durable context, preferences, and facts to preserve personal continuity.'}
+              : activeDomain === 'memories'
+                ? 'Capture durable context, preferences, and facts to preserve personal continuity.'
+                : 'Send a message to the local AI provider and receive a direct reply.'}
           </p>
         </div>
         <span className="connection-label">Live persistence</span>
@@ -689,6 +729,59 @@ export function App() {
               </ul>
             )}
           </section>
+        </section>
+      )}
+
+      {activeDomain === 'assistant' && (
+        <section className="workspace assistant-chat-workspace" aria-label="Assistant chat">
+          <form className="assistant-chat-form" onSubmit={handleChat}>
+            <div className="section-heading">
+              <div>
+                <p className="section-kicker">AI provider</p>
+                <h2>Send a message</h2>
+              </div>
+              <span className="required-note">Read-only — no mutations</span>
+            </div>
+            <label>
+              Your message
+              <textarea
+                aria-label="Chat message"
+                value={chatMessage}
+                onChange={(event) => setChatMessage(event.target.value)}
+                maxLength={4000}
+                rows={4}
+                placeholder="Ask the assistant anything"
+                required
+              />
+            </label>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={chatState === 'loading' || !chatMessage.trim()}
+            >
+              {chatState === 'loading' ? 'Thinking...' : 'Send message'}
+            </button>
+          </form>
+
+          {chatState === 'success' && chatReply && (
+            <section className="chat-reply" aria-label="Assistant reply">
+              <div className="section-heading">
+                <div>
+                  <p className="section-kicker">Assistant reply</p>
+                  <h2>Response</h2>
+                </div>
+              </div>
+              <div className="chat-reply-content">
+                <p>{chatReply}</p>
+              </div>
+            </section>
+          )}
+
+          {chatError && (
+            <p className="error-message" role="alert">
+              {chatError}
+            </p>
+          )}
         </section>
       )}
     </main>

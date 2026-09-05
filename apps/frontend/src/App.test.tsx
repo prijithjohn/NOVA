@@ -388,4 +388,63 @@ describe('task workspace', () => {
       'Failed to load memories',
     );
   });
+
+  it('sends chat message to assistant and displays reply', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ reply: 'Hello from Ollama' }), {
+          status: 200,
+        }),
+      );
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Assistant' }));
+    expect(
+      screen.getByText(
+        'Send a message to the local AI provider and receive a direct reply.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Your message'), 'Hello AI');
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+    expect(await screen.findByText('Hello from Ollama')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/assistant/chat',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ message: 'Hello AI' }),
+      }),
+    );
+  });
+
+  it('shows error when assistant chat fails', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(new Response('[]', { status: 200 })) // tasks on mount
+      .mockRejectedValueOnce(new Error('AI provider unavailable'));
+
+    render(<App />);
+    await screen.findByText(
+      'No tasks yet. Add the first one when you are ready.',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Assistant' }));
+    await user.type(screen.getByLabelText('Your message'), 'Test question');
+    await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'AI provider unavailable',
+    );
+  });
 });
+
+

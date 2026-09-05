@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.nova.ai.AIProviderException;
 import com.nova.assistant.AssistantActionNotSupportedException;
 import com.nova.assistant.AssistantToolNotFoundException;
 import com.nova.memories.MemoryNotFoundException;
@@ -52,5 +53,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler({AssistantActionNotSupportedException.class, AssistantToolNotFoundException.class})
     public ResponseEntity<Map<String, String>> handleInvalidAssistantRequest(RuntimeException exception) {
         return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AIProviderException.class)
+    public ResponseEntity<Map<String, String>> handleAIProviderError(AIProviderException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("error", exception.getMessage()));
     }
 }
